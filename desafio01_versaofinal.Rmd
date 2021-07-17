@@ -1,0 +1,144 @@
+---
+title: "Desafio 1"
+author: "Thais Fernandes"
+date: "21/04/2021"
+output:
+  html_document:
+    df_print: paged
+    theme: cosmo
+    highlight: kate
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(knitr)
+dados_votacao <- read_delim("votacao_candidato_munzona_2012_SP.txt", 
+                    col_names = c("DATA_GERACAO", "HORA_GERACAO", "ANO_ELEICAO", "NUM_TURNO", "DESCRICAO_ELEICAO", "SIGLA_UF", "SIGLA_UE", "CODIGO_MUNICIPIO", "NOME_MUNICIPIO", "NUMERO_ZONA", "CODIGO_CARGO", "NUMERO_CAND", "SQ_CANDIDATO", "NOME_CANDIDATO", "NOME_URNA_CANDIDATO", "DESCRICAO_CARGO", "COD_SIT_CAND_SUPERIOR", "DESC_SIT_CAND_SUPERIOR", "CODIGO_SIT_CANDIDATO", "DESC_SIT_CANDIDATO", "CODIGO_SIT_CAND_TOT", "DESC_SIT_CAND_TOT", "NUMERO_PARTIDO", "SIGLA_PARTIDO", "NOME_PARTIDO", "SEQUENCIAL_LEGENDA", "NOME_COLIGACAO", "COMPOSICAO_LEGENDA", "TOTAL_VOTOS"),
+                    delim = ";", 
+                    locale = locale(encoding='latin1'))
+
+dados_votacao <- dados_votacao %>% select("NUM_TURNO","SIGLA_UF", "CODIGO_MUNICIPIO", "NOME_CANDIDATO", "NOME_URNA_CANDIDATO", "DESC_SIT_CAND_TOT", "SIGLA_PARTIDO", "NOME_PARTIDO", "TOTAL_VOTOS","NUMERO_CAND","DESCRICAO_CARGO")
+
+```
+ *Este é um relatório de análise de um banco de dados com informações dos resultados eleitorais da campanha municipal de 2012 no Brasil, cada observação representa uma informação a respeito desse evento político.* 
+
+1. Resultados eleitorais para o primeiro turno da eleição de prefeitos(as):
+
+```{r echo=FALSE, warning=FALSE}
+
+eleicao_prefeito <- dados_votacao %>% filter(NUM_TURNO==1 & DESCRICAO_CARGO=="PREFEITO")
+eleicao_prefeito 
+```
+
+2. Nomes dos candidatos a prefeitura de São Paulo em 2012:
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_prefeito %>% distinct(NOME_CANDIDATO)
+```
+```{r warning=FALSE, include=FALSE}
+quantidade_candidatos <- 2026
+quantidade_candidatos
+```
+
+3. A quantidade de cadidatos que concorreram para prefeito no 1° turno em 2012 foi de `r quantidade_candidatos`
+
+
+4. Renomeando a variável "DESC_SIT_CAND_TOT" para "RESULTADO":
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_prefeito_renomeado <- eleicao_prefeito %>% rename(RESULTADO=DESC_SIT_CAND_TOT)
+eleicao_prefeito_renomeado %>% select(NOME_CANDIDATO, RESULTADO)
+```
+
+5. Indentificando os candidatos que se candidataram usando o nome completo: 
+
+
+```{r echo=FALSE, warning=FALSE}
+candidatos_nome_completo <- eleicao_prefeito_renomeado %>% filter(NOME_URNA_CANDIDATO==NOME_CANDIDATO) %>% distinct(NOME_URNA_CANDIDATO)
+candidatos_nome_completo
+```
+
+```{r include=FALSE}
+quantidade_candidatos_nome_completo <- nrow(candidatos_nome_completo)
+```
+
+
+6. A quantidade de candidatos que se candidataram usando o seu nome completo foi de `r quantidade_candidatos_nome_completo`. 
+
+
+```{r include=FALSE}
+porcentagem_candidatos <- quantidade_candidatos_nome_completo/quantidade_candidatos*100 
+porcentagem_candidatos
+```
+
+
+7. Os cadidatos que se candidataram utilizando o nome completo representam `r porcentagem_candidatos`% do total de candidatos.
+
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_prefeito_renomeado %>% filter(NOME_URNA_CANDIDATO==NOME_CANDIDATO & RESULTADO=="ELEITO" & NUM_TURNO==1) %>% distinct(NOME_URNA_CANDIDATO)
+Candidatos_eleitos_primeiro_turno <- 39
+```
+
+
+8.A quantidade de candidatos, que se elegeram em primeiro turno e usaram o seu nome completo como nome de urna foram `r Candidatos_eleitos_primeiro_turno` 
+
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_sp <- eleicao_prefeito_renomeado %>% filter(CODIGO_MUNICIPIO==71072)
+eleicao_sp %>% top_n(1, TOTAL_VOTOS)
+```
+
+9. A zona que registrou maior número de votos para um candidato foi a 258 em São Paulo, e o candidato foi José Serra, que recebeu 84.886 votos.
+
+
+10. Esses são os partidos que concorreram no Município de São Paulo:
+
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_sp %>% distinct(SIGLA_PARTIDO)
+```
+```{r warning=FALSE, include=FALSE}
+eleicao_sp_ideologia <- eleicao_sp %>% mutate(IDEOLOGIA_PARTIDO=SIGLA_PARTIDO) %>% mutate(IDEOLOGIA_PARTIDO=case_when(IDEOLOGIA_PARTIDO=="PCO" ~ "Esquerda",IDEOLOGIA_PARTIDO=="PDT" ~ "Esquerda",IDEOLOGIA_PARTIDO=="PSOL" ~ "Esquerda",IDEOLOGIA_PARTIDO=="PSTU" ~ "Esquerda", IDEOLOGIA_PARTIDO=="PT" ~ "Esquerda",IDEOLOGIA_PARTIDO=="PMDB" ~ "Outro",IDEOLOGIA_PARTIDO=="PPS" ~ "Outro",IDEOLOGIA_PARTIDO=="PSDC" ~ "Outro", TRUE ~ "Direita"))
+               
+                                        
+```
+
+
+11. Variável Ideologia do Partido:
+
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_sp_ideologia %>% select(IDEOLOGIA_PARTIDO, SIGLA_PARTIDO) %>% distinct(SIGLA_PARTIDO, IDEOLOGIA_PARTIDO) 
+```
+
+
+12. Identificando se o candidato recebeu mais de 10 mil votos na zona:
+
+
+```{r echo=FALSE, warning=FALSE}
+eleicao_sp_ideologia %>% mutate(Acima_de_10k=(TOTAL_VOTOS>10000)) %>% select(NOME_CANDIDATO,NUMERO_ZONA,Acima_de_10k)
+```
+
+
+13. Separando duas variáveis e criando uma nova: "NUMERO_CAND": 
+
+
+```{r echo=FALSE, warning=FALSE}
+dados_com_numero_do_partido <- dados_votacao %>% filter(DESCRICAO_CARGO=="VEREADOR") %>% separate(NUMERO_CAND,c("NUM_PARTIDO","NUM_CAND_RESTANTE"),2)  
+dados_com_numero_do_partido %>% select(NUM_PARTIDO, NUM_CAND_RESTANTE)
+```
+
+
+14. Unindo duas variáveis e criando uma nova "NUMERO_CAND": 
+
+
+```{r echo=FALSE, warning=FALSE}
+dados_com_numero_do_partido %>% unite("NUMERO_CAND",c(NUM_PARTIDO,NUM_CAND_RESTANTE), sep="")%>% select(NUMERO_CAND)
+```
+

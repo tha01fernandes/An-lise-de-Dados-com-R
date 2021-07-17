@@ -1,0 +1,345 @@
+---
+title: "Desafio 2"
+author: "Thais Fernandes"
+date: "06/05/2021"
+output: 
+ html_document:
+    df_print: paged
+    theme: cosmo
+    highlight: kate
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = T)
+```
+
+
+```{r message=FALSE, warning=TRUE, include=FALSE}
+# Baixando os dados do senso escolar do Estado de Roraima: 
+
+library("tidyverse")
+library("kableExtra")
+library("knitr")
+library("tidylog")
+library(DT)
+
+dados_censo_escolar <- read_delim("CENSOESC_2004_RO.txt", col_names = T, delim = "|", 
+                    locale = locale(encoding='latin1'))
+View(dados_censo_escolar)
+```
+
+
+
+### **Análise dos dados do censo escolar de 2004 do Estado de Roraima**
+
+
+
+**1. Retirando as escolas não ativas do banco, cada observação representa uma informação a respeito de uma escola ativa do estado de Roraima, aqui uma amostra pequena dos dados e todas as suas variáveis:** 
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# verificando quais são as observações da variável CODFUNC e filtrando o banco de modo a mostrar apenas as escolas ativas: 
+
+dados_censo_escolar <- dados_censo_escolar %>%  filter(CODFUNC == "Ativo") 
+
+dados_censo_escolar %>%  sample_n(20)  %>% datatable(filter='top')
+ 
+```
+
+
+
+**2. Há 3.156 escolas no estado de Roraima, o município com o maior número de escolas é Boa Vista, a capital do Estado.**   
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# obtendo o total de escolas por munícipio: 
+
+dados_censo_escolar %>% group_by(MUNIC, CODIGO_ESCOLA) %>% 
+  tally() %>% 
+  group_by(MUNIC)%>% 
+  summarize(total_escolas_municipio=sum(n, na.rm = T)) %>%  
+  arrange(-total_escolas_municipio) %>%    
+  add_row(MUNIC="Total", total_escolas_municipio=sum(.$total_escolas_municipio)) %>% 
+  kable(col.names=c("Municípios", "Total de Escolas"), 
+        caption= "Censo Escolar - Escolas Ativas")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+
+
+**3. Há 4.707 professores no Estado de Roraima** 
+
+
+
+```{r echo=FALSE, message=FALSE, warning=TRUE, paged.print=TRUE}
+
+# Obtendo a quantidade de professores no Estado de Roraima e em cada município: 
+
+dados_censo_escolar %>% group_by(MUNIC, PROFESS) %>%  
+  tally() %>% 
+  group_by(MUNIC)%>% 
+  summarize(qtd_professores=sum(PROFESS, na.rm = T)) %>% 
+  arrange(-qtd_professores) %>% 
+  add_row(MUNIC="Total",qtd_professores=sum(.$qtd_professores)) %>% 
+  kable(col.names=c("Municípios", "Quantidade de Professores"), 
+        caption= "Quantidade de Professores no Estado de Roraima por Município")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+
+
+**4. Uiramuta é o município com o maior percentual de professores entre todos os funcionários escolares**
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+
+# Obtendo a porcentagem de professores entre todos os empregados em cada município: 
+
+dados_censo_escolar %>% group_by(MUNIC, PROFESS, FUNCION) %>% 
+  tally() %>% 
+  group_by(MUNIC) %>%  
+  summarize(across(c(PROFESS, FUNCION),sum,na.rm=TRUE))%>% 
+  mutate(total_funcionarios=PROFESS+FUNCION)  %>%  
+  mutate(Pct_professores=100*(PROFESS/total_funcionarios)) %>% 
+  select(MUNIC, Pct_professores) %>%  arrange (-Pct_professores) %>% 
+  kable(digits=1, col.names=c("Municípios", "Porcentagem de Professores"), 
+        caption= "Quantidade de Professores em Relação ao Total de Funcionários")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+ 
+```
+
+
+**5. Boa Vista é o município de Roraima com a maior variação no número de professores por escola**
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando a média e o desvio padrão do número de professores por escola em cada município
+# Boa Vista é o município com o maior desvio padrão 
+
+dados_censo_escolar %>% group_by (MUNIC) %>% 
+  summarize(media_professores=mean(PROFESS,na.rm=T), 
+            desvio_padrao=sd(PROFESS,     na.rm=T)) %>% 
+  arrange(-desvio_padrao) %>%  
+  kable(digits=1, col.names=c("Municípios", "Média", "Desvio Padrão"), 
+        caption= "Média e desvio padrão do número de professores por escola em cada município")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+ 
+```
+
+
+
+**6. A rede estadual é onde está alocado a maior parte dos professores do estado**
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando quantos professores trabalham em cada uma das redes: federal, estadual, municipal e particular e a porcentagem de professores em cada rede 
+
+dados_censo_escolar %>% group_by (DEP) %>% 
+  summarize(total_professores_rede=sum(PROFESS)) %>% 
+  mutate(Pct_professores_rede=100*(total_professores_rede/sum(total_professores_rede, na.rm = T))) %>% 
+  arrange(-total_professores_rede) %>% 
+ kable(digits=1, col.names=c("Rede", "Total de Professores", "% de Professores"), 
+        caption= "Quantidade de Professores em cada rede")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+  
+```
+
+
+
+
+**7. Dos 15 municípios de Roraima apenas 6 possuem laboratório de informática, sendo a grande maioria no município de Boa Vista**
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando a porcentagem de escolas com laboratório de informática, por município
+
+dados_censo_escolar %>% group_by(MUNIC) %>% filter(LAB_INFO>0) %>% tally() %>% 
+  mutate(total_lab_info=sum(n)) %>% 
+  mutate(pct_lab_info=100*(n/total_lab_info)) %>% 
+  select(MUNIC, pct_lab_info) %>% 
+  arrange(-pct_lab_info) %>% 
+ kable(digits=1, col.names=c("Municípios", "% Laboratórios de Informática"), 
+        caption= "Quantidade de escolas com laboratório de informática em cada município")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=TRUE}
+# Virando o banco de dados do formato largo para o formato longo, para que as quatro variáveis VDG1CA, VDG1C1, VDG1C3, VDG1C4 se tornam uma variável que descreve o nível de ensino do professor, e uma outra variável que descreve o número de professores.
+
+ dados_censo_escolar <- dados_censo_escolar %>% pivot_longer(cols=c(VDG1CA,VDG1C1,VDG1C3, VDG1C4)) %>% 
+  mutate(nivel_ensino=case_when(name=="VDG1CA"~"Creche",
+                   name=="VDG1C1"~"Pré-escola", 
+                   name=="VDG1C3"~"Fundamental",
+                   name=="VDG1C4"~"Médio", TRUE~name)) %>% mutate(dados_censo_escolar= NULL, name= NULL)
+
+```
+
+
+
+
+**8. A maior parte dos professores do Estado de Roraima lecionam no ensino fundamental** 
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Resumindo o número de professores por nível de ensino 
+
+dados_censo_escolar %>% group_by(nivel_ensino) %>% 
+  summarize(numero_professores=sum(value, na.rm = T)) %>% 
+  arrange(-numero_professores)%>% 
+ kable(digits=1, col.names=c("Nível de Ensino", "Quantidade de Professores"), 
+        caption= "Quantidade de Professores por nível de ensino")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+
+
+
+**9. Média e Total do número de professores por escola em cada nível de ensino em cada município**
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando a média e o total do número de professores em cada nível de ensino em cada município
+
+  dados_censo_escolar %>% group_by(MUNIC, nivel_ensino) %>% 
+  summarize(media_qtd_professores=mean(value, na.rm = T), qtd_total_professores=sum(value, na.rm=T))%>% 
+  kable(digits=1, col.names=c("Município", "Nível de Ensino", "Média", "Qtde Total"), 
+       caption= "Média e total de professores por nível de ensino em cada município")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+
+
+
+**10. Bomfim  é o munícipio com o maior número de professores alocados no Ensino Fundamental** 
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando a porcentagem dos professores em cada nível de ensino, por município, em uma tabela. 
+
+  dados_censo_escolar %>% group_by(MUNIC, nivel_ensino) %>%
+  summarize(qtd_total_professores=sum(value, na.rm = T)) %>% 
+  mutate(pct_professores=100*(qtd_total_professores/sum(qtd_total_professores))) %>% 
+  select(MUNIC,nivel_ensino,pct_professores) %>% 
+  kable(digits=1, col.names=c("Município", "Nível de Ensino","% de Professores"), 
+       caption= "Porcetagem de Professores em cada Nível de Ensino por Município")%>%
+  kable_classic(full_width = F, html_font = "Cambria")
+  
+```
+
+
+
+**11.O município com a maior porcentagem de todos os Professores de Ensino Fundamental no Estado é Amajari**
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Calculando a porcentagem dos professores em cada município, por nível de ensino, em uma tabela. 
+
+  dados_censo_escolar %>% group_by(MUNIC, nivel_ensino) %>%
+  summarize(qtd_total_professores=sum(value, na.rm = T)) %>% 
+  mutate(pct_professores=100*(qtd_total_professores/sum(qtd_total_professores))) %>% 
+  select( MUNIC,nivel_ensino, pct_professores) %>% 
+  arrange(-pct_professores)  %>% 
+  kable(digits=1, col.names=c("Município", "Nível de Ensino", "% de Professores"), 
+       caption= "Porcetagem de Professores em cada Município por Nível de Ensino")%>%
+  kable_classic(full_width = F, html_font = "Cambria") 
+
+```
+
+
+
+**12. Para esta tabela foi gerada uma amostra aleatória de duas escolas estaduais em cada munucípio**  
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Voltando para o banco largo e gerando uma amostra aleatória de duas escolas estaduais em cada município. 
+
+
+dados_censo_largo <- read_delim("CENSOESC_2004_RO.txt", col_names = T, delim = "|", 
+                    locale = locale(encoding='latin1'))
+
+ censo_escolar_sample <- dados_censo_largo %>% filter(DEP=="Estadual") %>% 
+ group_by(MUNIC)%>% 
+ sample_n(2)
+ censo_escolar_sample  %>% datatable (filter='top')
+  
+  
+```
+
+
+
+
+**13. Calculando o número de escolas por município e rede percebemos que nem todas as redes existem em todos os municípios**
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Calculando o número de escolas por município e rede. Nem todas as redes existem em todos os municípios
+
+dados_censo_largo %>% group_by(MUNIC, DEP) %>% 
+  tally() %>% 
+  kable(col.names=c("Município", "Rede", "Total de Escolas"), 
+       caption= "Número de escolas por município e rede")%>%
+  kable_classic(full_width = F, html_font = "Cambria") 
+  
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Transforme as variáveis do município e rede em fatores
+
+dados_censo_largo <- dados_censo_largo %>% mutate(MUNIC=factor(MUNIC, levels = c("ALTO ALEGRE","AMAJARI","BOA VISTA", "BONFIM","CANTA", "CARACARAI", "CAROEBE", "IRACEMA","MUCAJAI","NORMANDIA","PACARAIMA", "RORAINOPOLIS","SAO JOAO DA BALIZA","SAO LUIZ", "UIRAMUTA")))
+
+dados_censo_largo <- dados_censo_largo %>% mutate(DEP=factor(DEP, levels = c("Estadual", "Municipal", "Federal", "Particular")))
+
+dados_censo_largo %>% distinct(DEP)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Usando complete() para criar uma tabela ‘completa’ com todas as combinações de município e rede possível, mesmo que não existe uma rede específica num município específico. Preenchendo os valores NA com ‘0’, porque já sabemos que não temos escolas nestes casos.
+
+dados_censo_largo %>%  complete(MUNIC, DEP) 
+
+dados_censo_largo <- dados_censo_largo %>% replace(is.na(.), 0)
+  
+```
+
+
+
+
+**14. Tabela com nomes dos municípios nas linhas e as redes (Estadual, Municipal, Federal, Particular) nas colunas em uma pequena amostra dos dados:**
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Use uma função de pivot para virar o tibble e gerar o tamanho de tabela desejada (municípios nas linhas, redes nas colunas)
+
+dados_censo_rede_colunas <- dados_censo_largo %>% pivot_wider(id_cols = c(CODIGO_ESCOLA, MUNIC, UF, CODMUNIC, CODFUNC, LAB_INFO, BIBLIO, PROFESS), names_from = DEP, values_from = c(VDG1CA, VDG1C1, VDG1C3, VDG1C4))
+
+dados_censo_rede_colunas %>% sample_n(40) %>% datatable (filter='top')
+View(dados_censo_rede_colunas)
+```
+
+
